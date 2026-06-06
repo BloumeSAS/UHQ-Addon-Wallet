@@ -11,7 +11,7 @@
 FROM node:20-alpine AS web-builder
 WORKDIR /build/web
 COPY web/package*.json ./
-RUN npm ci --prefer-offline
+RUN npm install --no-audit --no-fund
 COPY web/ ./
 RUN npm run build
 
@@ -19,7 +19,7 @@ RUN npm run build
 FROM node:20-alpine AS api-builder
 WORKDIR /build/api
 COPY api/package*.json ./
-RUN npm ci --prefer-offline
+RUN npm install --no-audit --no-fund
 COPY api/ ./
 RUN npm run build
 # Supprime les devDependencies
