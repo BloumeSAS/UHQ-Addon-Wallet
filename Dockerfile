@@ -23,7 +23,7 @@ RUN npm install --no-audit --no-fund --legacy-peer-deps
 COPY api/ ./
 RUN npm run build
 # Supprime les devDependencies
-RUN npm prune --production
+RUN npm prune --production --legacy-peer-deps
 
 # ── Stage 3 : Runner ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
