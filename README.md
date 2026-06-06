@@ -114,6 +114,26 @@ docker compose up -d --build
 
 ---
 
+## 🏷️ Gestion des Versions
+
+L'addon contient plusieurs fichiers déclarant sa version (`package.json`, `api/package.json`, `web/package.json` et `uhq-manifest.json`).
+Pour incrémenter automatiquement la version dans tous ces fichiers en une seule commande et créer le tag Git :
+
+```bash
+# Incrémenter la version (ex: v1.0.0 -> v1.0.1)
+npm version patch
+
+# Ou pour une version mineure (ex: v1.0.0 -> v1.1.0)
+npm version minor
+
+# Envoyer le code et le nouveau tag de version sur GitHub
+git push origin main --tags
+```
+
+Le push du tag va automatiquement déclencher le workflow GitHub Actions pour compiler et tagger l'image Docker avec la version correspondante (ex: `1.0.1` en plus de `latest`).
+
+---
+
 ## Variables d'environnement
 
 | Variable | Défaut | Description |
