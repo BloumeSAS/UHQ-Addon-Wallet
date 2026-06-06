@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--primary:hsl(13,73%,54%);--bg:transparent;--fg:hsl(0,0%,20%);--fg2:hsl(0,0%,45%);--border:hsl(24,20%,90%);--radius:.75rem}
+  [data-theme="dark"]{--primary:hsl(13,80%,58%);--fg:hsl(0,0%,92%);--fg2:hsl(0,0%,55%);--border:hsl(20,10%,20%)}
+  body{font-family:'Inter',ui-sans-serif,sans-serif;background:var(--bg);color:var(--fg);display:flex;gap:.75rem;padding:.5rem;align-items:stretch;height:100px;overflow:hidden}
+  .card{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem;display:flex;flex-direction:column;justify-content:space-between}
+  .label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg2)}
+  .value{font-size:1.4rem;font-weight:700;color:var(--primary)}
+  .sub{font-size:.7rem;color:var(--fg2)}
+</style>
+</head>
+<body>
+<div id="root" style="display:flex;gap:.75rem;width:100%;padding:.5rem;align-items:stretch"></div>
+<script>
+const p=new URLSearchParams(location.search);
+const theme=p.get('theme')||'dark';
+const lang=p.get('lang')||'fr';
+const token=p.get('token');
+document.documentElement.setAttribute('data-theme',theme);
+const i18n={fr:{total:'Total soldes',accounts:'Comptes actifs',avg:'Solde moyen'},en:{total:'Total balances',accounts:'Active accounts',avg:'Average balance'}};
+const t=k=>(i18n[lang]||i18n.fr)[k]||k;
+function fmt(v,cur='EUR'){return new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-US',{style:'currency',currency:cur}).format(v)}
+
+async function load(){
+  if(!token){document.getElementById('root').innerHTML='';return}
+  try{
+    const res=await fetch('/api/wallet/all',{headers:{Authorization:`Bearer ${token}`}});
+    const {wallets}=await res.json();
+    const total=wallets.reduce((s,w)=>s+w.balance,0);
+    const pos=wallets.filter(w=>w.balance>0);
+    const avg=pos.length?total/pos.length:0;
+    const cur=wallets[0]?.currency||'EUR';
+    document.getElementById('root').innerHTML=`
+      <div class="card"><div class="label">${t('total')}</div><div class="value">${fmt(total,cur)}</div><div class="sub">Wallet addon</div></div>
+      <div class="card"><div class="label">${t('accounts')}</div><div class="value">${pos.length}</div><div class="sub">/${wallets.length} comptes</div></div>
+      <div class="card"><div class="label">${t('avg')}</div><div class="value">${fmt(avg,cur)}</div><div class="sub"> </div></div>`;
+  }catch{document.getElementById('root').innerHTML=''}
+}
+load();
+</script>
+</body>
+</html>

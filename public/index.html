@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Solde — Wallet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:     hsl(13, 73%, 54%);
+    --bg:          hsl(0, 0%, 100%);
+    --bg2:         hsl(24, 30%, 95%);
+    --fg:          hsl(0, 0%, 20%);
+    --fg2:         hsl(0, 0%, 45%);
+    --border:      hsl(24, 20%, 90%);
+    --radius:      0.75rem;
+    --green:       hsl(142, 60%, 40%);
+    --red:         hsl(0, 70%, 50%);
+  }
+  [data-theme="dark"] {
+    --primary:     hsl(13, 80%, 58%);
+    --bg:          hsl(20, 14%, 8%);
+    --bg2:         hsl(20, 14%, 11%);
+    --fg:          hsl(0, 0%, 92%);
+    --fg2:         hsl(0, 0%, 55%);
+    --border:      hsl(20, 10%, 20%);
+    --green:       hsl(142, 55%, 50%);
+    --red:         hsl(0, 65%, 55%);
+  }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+  }
+
+  .balance-card {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary) 0%, hsl(13, 60%, 44%) 100%);
+    color: #fff;
+    border: none;
+    margin-bottom: 1.5rem;
+  }
+  .balance-card .label {
+    font-size: 0.875rem;
+    opacity: 0.85;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  .balance-card .amount {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .balance-card .currency-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    border-radius: 9999px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+  }
+
+  h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; }
+  h2 { font-size: 0.875rem; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: var(--fg2); border-bottom: 1px solid var(--border); }
+  td { padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+
+  .pos { color: var(--green); font-weight: 600; }
+  .neg { color: var(--red);   font-weight: 600; }
+
+  .empty { text-align: center; color: var(--fg2); padding: 2rem; font-size: 0.875rem; }
+  .spinner { display: flex; justify-content: center; padding: 2rem; color: var(--fg2); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="spinner">Chargement…</div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const theme  = params.get('theme') || 'dark';
+  const lang   = params.get('lang')  || 'fr';
+  const token  = params.get('token');
+
+  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.lang = lang;
+
+  const i18n = {
+    fr: { title: 'Mon solde', balance: 'Solde disponible', history: 'Historique des transactions', noTx: 'Aucune transaction', date: 'Date', amount: 'Montant', note: 'Note', noToken: 'Non authentifié' },
+    en: { title: 'My Balance', balance: 'Available balance', history: 'Transaction history', noTx: 'No transactions', date: 'Date', amount: 'Amount', note: 'Note', noToken: 'Not authenticated' },
+  };
+  const t = (k) => (i18n[lang] || i18n.fr)[k] || k;
+
+  function fmt(amount, currency) {
+    return new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', {
+      style: 'currency', currency: currency || 'EUR',
+    }).format(amount);
+  }
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  async function render() {
+    const app = document.getElementById('app');
+    if (!token) {
+      app.innerHTML = `<div class="card empty">${t('noToken')}</div>`;
+      return;
+    }
+    try {
+      const res = await fetch('/api/wallet', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const { wallet, transactions } = await res.json();
+
+      const txRows = transactions.length
+        ? transactions.map(tx => `
+          <tr>
+            <td>${fmtDate(tx.created_at)}</td>
+            <td class="${tx.amount >= 0 ? 'pos' : 'neg'}">${tx.amount >= 0 ? '+' : ''}${fmt(tx.amount, wallet.currency)}</td>
+            <td style="color:var(--fg2)">${tx.note || '—'}</td>
+          </tr>`).join('')
+        : `<tr><td colspan="3" class="empty">${t('noTx')}</td></tr>`;
+
+      app.innerHTML = `
+        <h1>${t('title')}</h1>
+        <div class="card balance-card">
+          <div class="label">${t('balance')}</div>
+          <div class="amount">${fmt(wallet.balance, wallet.currency)}</div>
+          <span class="currency-badge">${wallet.currency}</span>
+        </div>
+        <div class="card">
+          <h2>${t('history')}</h2>
+          <table>
+            <thead><tr><th>${t('date')}</th><th>${t('amount')}</th><th>${t('note')}</th></tr></thead>
+            <tbody>${txRows}</tbody>
+          </table>
+        </div>`;
+    } catch(e) {
+      app.innerHTML = `<div class="card empty" style="color:var(--red)">${e.message}</div>`;
+    }
+  }
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+api/node_modules/
+web/node_modules/
+
+# Build outputs
+api/dist/
+web/dist/
+
+# Local runtime data
+wallet-data.json
+api/wallet-data.json
+
+# Env config
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db

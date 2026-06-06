@@ -1,0 +1,76 @@
+{
+  "name": "Wallet",
+  "version": "1.0.0",
+  "description": "Système de solde par compte proxy. L'admin crédite les comptes, les utilisateurs voient leur solde.",
+  "icon": "Wallet",
+  "author": {
+    "name":  "Bloume SAS",
+    "email": "contact@bloume.fr",
+    "url":   "https://bloume.fr"
+  },
+  "homepage":   "https://github.com/BloumeSAS/UHQ-Addon-Wallet",
+  "license":    "MIT",
+  "repository": "https://github.com/BloumeSAS/UHQ-Addon-Wallet",
+  "translations": {
+    "fr": {
+      "addon.wallet.nav":            "Mon solde",
+      "addon.wallet.navAdmin":       "Gestion des soldes",
+      "addon.wallet.balance":        "Solde",
+      "addon.wallet.balanceSummary": "Soldes des comptes"
+    },
+    "en": {
+      "addon.wallet.nav":            "My Balance",
+      "addon.wallet.navAdmin":       "Balance Management",
+      "addon.wallet.balance":        "Balance",
+      "addon.wallet.balanceSummary": "Account Balances"
+    }
+  },
+  "pages": [
+    {
+      "path":         "/",
+      "label":        "addon.wallet.nav",
+      "icon":         "Wallet",
+      "showInNavbar": false,
+      "adminOnly":    false
+    },
+    {
+      "path":         "/admin",
+      "label":        "addon.wallet.navAdmin",
+      "icon":         "CreditCard",
+      "showInNavbar": true,
+      "adminOnly":    true
+    }
+  ],
+  "slots": [
+    {
+      "zone":      "topbar",
+      "label":     "addon.wallet.nav",
+      "icon":      "Wallet",
+      "page":      "/",
+      "adminOnly": false
+    }
+  ],
+  "widgets": [
+    {
+      "zone":   "/subusers",
+      "path":   "/widget/balances",
+      "height": 340,
+      "label":  "addon.wallet.balanceSummary"
+    },
+    {
+      "zone":   "/",
+      "path":   "/widget/dashboard",
+      "height": 100,
+      "label":  "addon.wallet.balanceSummary"
+    }
+  ],
+  "auth": {
+    "passJwt":      true,
+    "passUserInfo": true
+  },
+  "backup": {
+    "exportEndpoint": "/api/backup/export",
+    "importEndpoint": "/api/backup/import",
+    "authHeader":     "X-Panel-Key"
+  }
+}

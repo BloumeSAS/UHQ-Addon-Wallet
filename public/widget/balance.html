@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balance Widget</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    height: 36px;
+    overflow: hidden;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 9999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  body.light .badge {
+    background: hsla(13, 73%, 54%, 0.12);
+    color: hsl(13, 73%, 45%);
+  }
+  body.dark .badge {
+    background: hsla(13, 80%, 58%, 0.15);
+    color: hsl(13, 80%, 65%);
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
+  .error {
+    font-size: 11px;
+    color: #ef4444;
+  }
+</style>
+</head>
+<body class="dark">
+<script>
+  const params = new URLSearchParams(location.search);
+  const theme  = params.get('theme') || 'dark';
+  const userId = params.get('userId');
+  const token  = params.get('token');
+
+  document.body.className = theme === 'light' ? 'light' : 'dark';
+
+  async function load() {
+    if (!token || !userId) {
+      document.body.innerHTML = '<span class="error">—</span>';
+      return;
+    }
+    try {
+      const res = await fetch(`/api/wallet/balance?userId=${encodeURIComponent(userId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const { balance, currency } = await res.json();
+      const fmt = new Intl.NumberFormat(params.get('lang') || 'fr-FR', {
+        style: 'currency', currency: currency || 'EUR',
+      }).format(balance);
+      document.body.innerHTML = `
+        <span class="badge">
+          <span class="dot"></span>
+          ${fmt}
+        </span>`;
+    } catch (e) {
+      document.body.innerHTML = '<span class="error">—</span>';
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

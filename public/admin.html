@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion des soldes — Wallet Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: hsl(13, 73%, 54%); --bg: #fff; --bg2: hsl(24,30%,95%);
+    --fg: hsl(0,0%,20%); --fg2: hsl(0,0%,45%); --border: hsl(24,20%,90%);
+    --radius: .75rem; --green: hsl(142,60%,40%); --red: hsl(0,70%,50%);
+  }
+  [data-theme="dark"] {
+    --primary: hsl(13,80%,58%); --bg: hsl(20,14%,8%); --bg2: hsl(20,14%,11%);
+    --fg: hsl(0,0%,92%); --fg2: hsl(0,0%,55%); --border: hsl(20,10%,20%);
+    --green: hsl(142,55%,50%); --red: hsl(0,65%,55%);
+  }
+  body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--fg); min-height:100vh; padding:1.5rem; }
+  h1 { font-size:1.25rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
+  h2 { font-size:.8rem; font-weight:600; color:var(--fg2); text-transform:uppercase; letter-spacing:.05em; margin-bottom:.75rem; }
+  .card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  label { font-size:.8rem; font-weight:500; color:var(--fg2); display:block; margin-bottom:.3rem; }
+  input, select {
+    width:100%; padding:.5rem .75rem; background:var(--bg); border:1px solid var(--border);
+    border-radius:.5rem; color:var(--fg); font-size:.875rem; outline:none;
+  }
+  input:focus, select:focus { border-color:var(--primary); box-shadow:0 0 0 2px hsla(13,73%,54%,.15); }
+  button {
+    padding:.5rem 1.25rem; border:none; border-radius:.5rem; font-weight:600; font-size:.875rem;
+    cursor:pointer; transition:opacity .15s;
+  }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-primary { background:var(--primary); color:#fff; }
+  .btn-primary:hover:not(:disabled) { opacity:.88; }
+  .btn-credit { background:var(--green); color:#fff; }
+  .btn-debit  { background:var(--red);   color:#fff; }
+  table { width:100%; border-collapse:collapse; font-size:.875rem; }
+  th { text-align:left; padding:.5rem .75rem; font-size:.75rem; color:var(--fg2); border-bottom:1px solid var(--border); }
+  td { padding:.625rem .75rem; border-bottom:1px solid var(--border); }
+  tr:last-child td { border-bottom:none; }
+  .amount { font-weight:700; }
+  .badge { display:inline-block; border-radius:9999px; padding:1px 10px; font-size:.75rem; font-weight:600; }
+  .badge-pos { background:hsla(142,60%,40%,.15); color:var(--green); }
+  .badge-zero { background:var(--border); color:var(--fg2); }
+  .msg { margin-top:.75rem; font-size:.8rem; padding:.5rem .75rem; border-radius:.5rem; }
+  .msg.ok  { background:hsla(142,60%,40%,.12); color:var(--green); }
+  .msg.err { background:hsla(0,70%,50%,.12); color:var(--red); }
+  .empty { text-align:center; color:var(--fg2); padding:2rem; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1rem; }
+  .stat { text-align:center; }
+  .stat .num { font-size:1.5rem; font-weight:700; color:var(--primary); }
+  .stat .lbl { font-size:.75rem; color:var(--fg2); margin-top:.2rem; }
+</style>
+</head>
+<body>
+<div id="app"><div style="text-align:center;padding:2rem;color:var(--fg2)">Chargement…</div></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const theme  = params.get('theme') || 'dark';
+const lang   = params.get('lang')  || 'fr';
+const token  = params.get('token');
+const role   = params.get('role');
+
+document.documentElement.setAttribute('data-theme', theme);
+
+const i18n = {
+  fr: { title:'Gestion des soldes', allWallets:'Tous les portefeuilles', userId:'User ID', balance:'Solde', credit:'Créditer', debit:'Débiter', amount:'Montant (€)', note:'Note (optionnelle)', noToken:'Non authentifié', noAdmin:'Réservé aux admins', add:'Ajouter', success:'Opération réussie', noWallets:'Aucun portefeuille' },
+  en: { title:'Balance Management', allWallets:'All wallets', userId:'User ID', balance:'Balance', credit:'Credit', debit:'Debit', amount:'Amount (€)', note:'Note (optional)', noToken:'Not authenticated', noAdmin:'Admin only', add:'Add', success:'Success', noWallets:'No wallets' },
+};
+const t = k => (i18n[lang]||i18n.fr)[k]||k;
+
+function fmt(v, cur='EUR') {
+  return new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-US',{style:'currency',currency:cur}).format(v);
+}
+
+let wallets = [];
+
+async function loadWallets() {
+  const res = await fetch('/api/wallet/all',{headers:{Authorization:`Bearer ${token}`}});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const {wallets:w} = await res.json();
+  wallets = w;
+  return w;
+}
+
+async function addFunds(userId, amount, note) {
+  const res = await fetch('/api/wallet/add',{
+    method:'POST',
+    headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+    body:JSON.stringify({userId,amount,note}),
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error||'Erreur');
+  return data;
+}
+
+function renderStats(ws) {
+  const total = ws.reduce((s,w)=>s+w.balance,0);
+  const avg   = ws.length ? total/ws.length : 0;
+  const pos   = ws.filter(w=>w.balance>0).length;
+  return `
+    <div class="stats">
+      <div class="stat"><div class="num">${ws.length}</div><div class="lbl">Comptes</div></div>
+      <div class="stat"><div class="num">${fmt(total)}</div><div class="lbl">Total</div></div>
+      <div class="stat"><div class="num">${pos}</div><div class="lbl">Avec solde</div></div>
+    </div>`;
+}
+
+function renderWalletsTable(ws) {
+  if(!ws.length) return `<div class="empty">${t('noWallets')}</div>`;
+  const rows = ws.map(w=>`
+    <tr>
+      <td style="font-family:monospace;font-size:.75rem;color:var(--fg2)">${w.user_id.slice(0,12)}…</td>
+      <td><span class="badge ${w.balance>0?'badge-pos':'badge-zero'}">${fmt(w.balance,w.currency)}</span></td>
+      <td>
+        <button class="btn-credit btn" style="padding:.25rem .6rem;font-size:.75rem" onclick="openModal('${w.user_id}',1)">+</button>
+        <button class="btn-debit btn" style="padding:.25rem .6rem;font-size:.75rem;margin-left:4px" onclick="openModal('${w.user_id}',-1)">−</button>
+      </td>
+    </tr>`).join('');
+  return `
+    <table>
+      <thead><tr><th>User ID</th><th>${t('balance')}</th><th>Action</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function renderPage(ws) {
+  document.getElementById('app').innerHTML = `
+    <h1>💳 ${t('title')}</h1>
+    ${renderStats(ws)}
+    <div class="card">
+      <h2>${t('add')}</h2>
+      <div class="grid2" style="margin-bottom:.75rem">
+        <div>
+          <label>${t('userId')}</label>
+          <input id="uid" placeholder="uuid de l'utilisateur" />
+        </div>
+        <div>
+          <label>${t('amount')}</label>
+          <input id="amt" type="number" step="0.01" placeholder="ex: 10.00" />
+        </div>
+      </div>
+      <div style="margin-bottom:.75rem">
+        <label>${t('note')}</label>
+        <input id="note" placeholder="ex: Achat plan Pro" />
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-credit btn" onclick="submit(1)">${t('credit')}</button>
+        <button class="btn-debit btn" onclick="submit(-1)">${t('debit')}</button>
+      </div>
+      <div id="msg"></div>
+    </div>
+    <div class="card">
+      <h2>${t('allWallets')}</h2>
+      <div id="wallets-list">${renderWalletsTable(ws)}</div>
+    </div>`;
+}
+
+async function submit(sign) {
+  const uid  = document.getElementById('uid').value.trim();
+  const amt  = parseFloat(document.getElementById('amt').value);
+  const note = document.getElementById('note').value.trim();
+  const msg  = document.getElementById('msg');
+  if(!uid||isNaN(amt)) { msg.className='msg err'; msg.textContent='User ID et montant requis'; return; }
+  try {
+    const res = await addFunds(uid, sign*Math.abs(amt), note||undefined);
+    msg.className='msg ok';
+    msg.textContent = `${t('success')} — nouveau solde : ${fmt(res.balance)}`;
+    const ws = await loadWallets();
+    document.getElementById('wallets-list').innerHTML = renderWalletsTable(ws);
+  } catch(e) {
+    msg.className='msg err'; msg.textContent=e.message;
+  }
+}
+
+function openModal(userId, sign) {
+  document.getElementById('uid').value = userId;
+  document.getElementById('amt').value = '';
+  document.getElementById('note').value = '';
+  document.getElementById('uid').scrollIntoView({behavior:'smooth',block:'center'});
+  if(sign<0) document.getElementById('amt').placeholder = 'Montant à débiter';
+  else        document.getElementById('amt').placeholder = 'Montant à créditer';
+}
+
+async function init() {
+  if(!token) { document.getElementById('app').innerHTML=`<div class="empty">${t('noToken')}</div>`; return; }
+  if(role!=='ADMIN') { document.getElementById('app').innerHTML=`<div class="empty">${t('noAdmin')}</div>`; return; }
+  try {
+    const ws = await loadWallets();
+    renderPage(ws);
+  } catch(e) {
+    document.getElementById('app').innerHTML=`<div class="empty" style="color:var(--red)">${e.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

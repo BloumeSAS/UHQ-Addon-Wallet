@@ -1,0 +1,118 @@
+/* ─── Variables thème tangerine (miroir du panel UHQ) ─────────────────────── */
+:root {
+  --primary:   hsl(13, 73%, 54%);
+  --bg:        #ffffff;
+  --bg2:       hsl(24, 30%, 97%);
+  --fg:        hsl(0, 0%, 15%);
+  --fg2:       hsl(0, 0%, 45%);
+  --border:    hsl(24, 20%, 88%);
+  --green:     hsl(142, 60%, 40%);
+  --red:       hsl(0, 70%, 50%);
+  --radius:    0.75rem;
+}
+
+[data-theme="dark"] {
+  --primary:   hsl(13, 80%, 58%);
+  --bg:        hsl(20, 14%, 8%);
+  --bg2:       hsl(20, 14%, 11%);
+  --fg:        hsl(0, 0%, 92%);
+  --fg2:       hsl(0, 0%, 55%);
+  --border:    hsl(20, 10%, 20%);
+  --green:     hsl(142, 55%, 50%);
+  --red:       hsl(0, 65%, 55%);
+}
+
+/* ─── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body   { font-family: 'Inter', ui-sans-serif, sans-serif; background: var(--bg); color: var(--fg); font-size: 0.875rem; line-height: 1.5; }
+button { font-family: inherit; cursor: pointer; }
+input  { font-family: inherit; }
+
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+.page   { padding: 1.25rem; min-height: 100vh; background: var(--bg); }
+.widget { padding: 0; background: transparent; }
+.section-title { font-size: 1.25rem; font-weight: 700; color: var(--fg); margin-bottom: 1rem; }
+
+/* ─── Card ────────────────────────────────────────────────────────────────── */
+.card    { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+.card-sm { border-radius: calc(var(--radius) * 0.75); padding: 0.875rem; }
+
+/* ─── Stat card ───────────────────────────────────────────────────────────── */
+.stat-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg2); margin-bottom: 0.25rem; }
+.stat-value { font-size: 1.5rem; font-weight: 700; color: var(--primary); line-height: 1.2; }
+.stat-sub   { font-size: 0.7rem; color: var(--fg2); margin-top: 0.2rem; }
+
+/* ─── Balance hero ────────────────────────────────────────────────────────── */
+.balance-hero { text-align: center; padding: 2rem 1rem; }
+.balance-amount { font-size: 3rem; font-weight: 800; color: var(--primary); }
+.balance-currency { font-size: 1rem; color: var(--fg2); margin-left: 0.4rem; }
+
+/* ─── Table ───────────────────────────────────────────────────────────────── */
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.65rem; font-weight: 600; color: var(--fg2); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.05em; }
+.table td { padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; vertical-align: middle; }
+.table tr:last-child td { border-bottom: none; }
+.table-wrap { overflow-x: auto; }
+
+/* ─── Form ────────────────────────────────────────────────────────────────── */
+.input {
+  width: 100%; padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border); border-radius: 0.4rem;
+  background: var(--bg); color: var(--fg); font-size: 0.875rem;
+  transition: border-color 0.15s;
+}
+.input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent); }
+.form-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.label-text { font-size: 0.75rem; font-weight: 500; color: var(--fg2); margin-bottom: 0.25rem; display: block; }
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.875rem; border-radius: 0.4rem; border: none; font-size: 0.8rem; font-weight: 600; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-sm { padding: 0.25rem 0.55rem; font-size: 0.72rem; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-outline  { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+.btn-success  { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.btn-danger   { background: color-mix(in srgb, var(--red)   15%, transparent); color: var(--red); }
+.btn-ghost    { background: transparent; color: var(--fg2); }
+
+/* ─── Feedback ────────────────────────────────────────────────────────────── */
+.alert { padding: 0.5rem 0.875rem; border-radius: 0.4rem; font-size: 0.8125rem; }
+.alert-error   { background: color-mix(in srgb, var(--red)   14%, transparent); color: var(--red); }
+.alert-success { background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); }
+
+/* ─── States ──────────────────────────────────────────────────────────────── */
+.empty   { text-align: center; color: var(--fg2); padding: 2.5rem 1rem; }
+.loading { text-align: center; color: var(--fg2); padding: 1.5rem; }
+.mono    { font-family: 'Menlo', 'Consolas', monospace; font-size: 0.75rem; color: var(--fg2); }
+
+/* ─── Text utils ──────────────────────────────────────────────────────────── */
+.text-primary { color: var(--primary); }
+.text-muted   { color: var(--fg2); }
+.text-green   { color: var(--green); }
+.text-red     { color: var(--red); }
+.text-bold    { font-weight: 700; }
+.text-sm      { font-size: 0.8125rem; }
+.text-xs      { font-size: 0.72rem; }
+.truncate     { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+
+/* ─── Spacing helpers ─────────────────────────────────────────────────────── */
+.flex         { display: flex; }
+.flex-col     { flex-direction: column; }
+.flex-1       { flex: 1; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.w-full { width: 100%; }

@@ -1,0 +1,30 @@
+# ─── Développement local ──────────────────────────────────────────────────────
+# Lance l'addon wallet précompilé (après npm run build dans api/ et web/)
+# Pour le hot-reload, préférer :
+#   cd api && npm run start:dev  (NestJS :3001)
+#   cd web && npm run dev        (Vite :5174)
+
+services:
+  wallet:
+    build: .
+    container_name: uhq-addon-wallet
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT:          3001
+      PANEL_URL:     http://host.docker.internal:8000
+      DB_PATH:       /app/data/wallet-data.json
+      NODE_ENV:      production
+      # PANEL_API_KEY: votre-clé-api-panel
+    volumes:
+      - wallet_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/uhq-manifest.json"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+
+volumes:
+  wallet_data:
+    driver: local

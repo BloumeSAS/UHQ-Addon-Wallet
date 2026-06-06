@@ -1,0 +1,44 @@
+# ─── Coolify — déploiement production ────────────────────────────────────────
+# Utiliser ce fichier comme "Docker Compose" dans Coolify.
+#
+# Variables d'environnement à configurer dans Coolify :
+#   PORT           = 3001
+#   PANEL_URL      = https://votre-panel.domaine.com
+#   PANEL_API_KEY  = (clé API dans Paramètres → Clé API du panel)
+#   NODE_ENV       = production
+#
+# Volume persistant Coolify :
+#   Source : wallet_data   |   Destination : /app/data
+#
+# Important : n'exposer que le port 3001 (NestJS).
+# Traefik route automatiquement via les labels.
+
+services:
+  wallet:
+    image: "${SERVICE_IMAGE:-ghcr.io/BloumeSAS/UHQ-Addon-Wallet:latest}"
+    # Ou utiliser le build local :
+    # build: .
+    restart: unless-stopped
+    environment:
+      PORT:         "${PORT:-3001}"
+      PANEL_URL:    "${PANEL_URL}"
+      PANEL_API_KEY: "${PANEL_API_KEY}"
+      DB_PATH:      /app/data/wallet-data.json
+      NODE_ENV:     production
+    volumes:
+      - wallet_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/uhq-manifest.json"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wallet.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.wallet.entrypoints=https"
+      - "traefik.http.routers.wallet.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wallet.loadbalancer.server.port=3001"
+
+volumes:
+  wallet_data:
+    driver: local

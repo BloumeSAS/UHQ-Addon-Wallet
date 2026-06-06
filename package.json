@@ -1,0 +1,13 @@
+{
+  "name": "uhq-addon-wallet",
+  "version": "1.0.0",
+  "description": "Addon Wallet pour UHQ Panel OS — NestJS + React",
+  "private": true,
+  "scripts": {
+    "install:all": "npm i --prefix api && npm i --prefix web",
+    "build":       "npm run build --prefix web && npm run build --prefix api",
+    "start":       "npm run start --prefix api",
+    "dev:api":     "npm run start:dev --prefix api",
+    "dev:web":     "npm run dev --prefix web"
+  }
+}

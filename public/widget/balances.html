@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balances Widget</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: hsl(13,73%,54%); --bg: #fff; --bg2: hsl(24,30%,95%);
+    --fg: hsl(0,0%,20%); --fg2: hsl(0,0%,45%); --border: hsl(24,20%,90%);
+    --green: hsl(142,60%,40%); --red: hsl(0,70%,50%);
+  }
+  [data-theme="dark"] {
+    --primary: hsl(13,80%,58%); --bg: hsl(20,14%,8%); --bg2: hsl(20,14%,11%);
+    --fg: hsl(0,0%,92%); --fg2: hsl(0,0%,55%); --border: hsl(20,10%,20%);
+    --green: hsl(142,55%,50%); --red: hsl(0,65%,55%);
+  }
+  body { font-family:'Inter',ui-sans-serif,sans-serif; background:var(--bg); color:var(--fg); padding:.75rem; font-size:.875rem; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; padding:.4rem .6rem; font-size:.7rem; font-weight:600; color:var(--fg2); border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.04em; }
+  td { padding:.5rem .6rem; border-bottom:1px solid var(--border); }
+  tr:last-child td { border-bottom:none; }
+  .mono { font-family:monospace; font-size:.75rem; color:var(--fg2); }
+  .amount { font-weight:700; }
+  .pos { color:var(--green); }
+  .zero { color:var(--fg2); }
+  .btn { padding:.2rem .6rem; border-radius:.35rem; border:none; cursor:pointer; font-size:.7rem; font-weight:600; margin-left:4px; }
+  .btn-add { background:hsla(142,60%,40%,.15); color:var(--green); }
+  .btn-sub { background:hsla(0,70%,50%,.12); color:var(--red); }
+  .form { margin-top:.75rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; padding:.6rem; background:var(--bg2); border-radius:.5rem; border:1px solid var(--border); }
+  .form input { flex:1; min-width:80px; padding:.3rem .5rem; border:1px solid var(--border); border-radius:.35rem; background:var(--bg); color:var(--fg); font-size:.8rem; }
+  .form .submit { padding:.3rem .75rem; border:none; border-radius:.35rem; background:var(--primary); color:#fff; font-weight:600; font-size:.8rem; cursor:pointer; }
+  .msg { margin-top:.5rem; font-size:.75rem; padding:.3rem .6rem; border-radius:.35rem; }
+  .ok  { background:hsla(142,60%,40%,.12); color:var(--green); }
+  .err { background:hsla(0,70%,50%,.12); color:var(--red); }
+  .empty { text-align:center; color:var(--fg2); padding:1.5rem; }
+  .loading { text-align:center; padding:1rem; color:var(--fg2); }
+</style>
+</head>
+<body>
+<div id="root"><div class="loading">Chargement…</div></div>
+
+<script>
+const p     = new URLSearchParams(location.search);
+const theme = p.get('theme') || 'dark';
+const lang  = p.get('lang')  || 'fr';
+const token = p.get('token');
+const role  = p.get('role');
+
+document.documentElement.setAttribute('data-theme', theme);
+
+const i18n = {
+  fr: { userId:'User ID', balance:'Solde', actions:'Actions', noData:'Aucun solde', credit:'Crédit', debit:'Débit', amount:'Montant', note:'Note', submit:'OK', success:'Mis à jour', noToken:'Connexion requise', noAdmin:'Admin requis' },
+  en: { userId:'User ID', balance:'Balance', actions:'Actions', noData:'No balances yet', credit:'Credit', debit:'Debit', amount:'Amount', note:'Note', submit:'OK', success:'Updated', noToken:'Login required', noAdmin:'Admin required' },
+};
+const t = k => (i18n[lang]||i18n.fr)[k]||k;
+
+function fmt(v, cur='EUR'){
+  return new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-US',{style:'currency',currency:cur}).format(v);
+}
+
+let wallets=[], activeId=null;
+
+async function load(){
+  if(!token){ document.getElementById('root').innerHTML=`<div class="empty">${t('noToken')}</div>`; return; }
+  if(role!=='ADMIN'){ document.getElementById('root').innerHTML=`<div class="empty">${t('noAdmin')}</div>`; return; }
+  const res=await fetch('/api/wallet/all',{headers:{Authorization:`Bearer ${token}`}});
+  const {wallets:ws}=await res.json();
+  wallets=ws;
+  render();
+}
+
+function render(){
+  const rows=wallets.length?wallets.map(w=>`
+    <tr>
+      <td class="mono">${w.user_id.slice(0,10)}…</td>
+      <td class="amount ${w.balance>0?'pos':'zero'}">${fmt(w.balance,w.currency)}</td>
+      <td>
+        <button class="btn btn-add" onclick="showForm('${w.user_id}',1)">+</button>
+        <button class="btn btn-sub" onclick="showForm('${w.user_id}',-1)">−</button>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="3" class="empty">${t('noData')}</td></tr>`;
+
+  document.getElementById('root').innerHTML=`
+    <table>
+      <thead><tr><th>${t('userId')}</th><th>${t('balance')}</th><th>${t('actions')}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div id="form" style="display:none" class="form">
+      <input id="famt" type="number" step="0.01" placeholder="${t('amount')}"/>
+      <input id="fnote" placeholder="${t('note')}"/>
+      <button class="submit" onclick="doAdd()">${t('submit')}</button>
+    </div>
+    <div id="msg"></div>`;
+}
+
+function showForm(uid, sign){
+  activeId=uid;
+  document.getElementById('famt').dataset.sign=sign;
+  document.getElementById('famt').value='';
+  document.getElementById('fnote').value='';
+  const f=document.getElementById('form');
+  f.style.display='flex';
+  document.getElementById('famt').focus();
+}
+
+async function doAdd(){
+  const amt=parseFloat(document.getElementById('famt').value);
+  const sign=parseInt(document.getElementById('famt').dataset.sign||'1');
+  const note=document.getElementById('fnote').value;
+  if(!activeId||isNaN(amt)) return;
+  const msg=document.getElementById('msg');
+  try{
+    const res=await fetch('/api/wallet/add',{
+      method:'POST',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({userId:activeId,amount:sign*Math.abs(amt),note:note||undefined}),
+    });
+    const d=await res.json();
+    if(!res.ok) throw new Error(d.error||'Erreur');
+    msg.className='msg ok'; msg.textContent=`${t('success')} — ${fmt(d.balance)}`;
+    document.getElementById('form').style.display='none';
+    await load();
+  }catch(e){ msg.className='msg err'; msg.textContent=e.message; }
+}
+
+load();
+</script>
+</body>
+</html>
