@@ -1,7 +1,7 @@
 import {
-  Controller, Get, Post, Body, Query,
+  Controller, Get, Post, Body, Query, Headers,
   Req, Res, UnauthorizedException, ForbiddenException,
-  HttpCode,
+  HttpCode, Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { WalletService } from './wallet.service';
@@ -49,6 +49,7 @@ function authenticate(req: Request): JwtPayload {
 
 @Controller('api/wallet')
 export class WalletController {
+  private readonly logger = new Logger(WalletController.name);
   constructor(private readonly walletService: WalletService) {}
 
   /** GET /api/wallet — solde + historique de l'utilisateur courant */
@@ -94,6 +95,40 @@ export class WalletController {
       dto.amount,
       dto.note ?? null,
       payload.sub,
+    );
+
+    return { success: true, balance: wallet.balance };
+  }
+
+  /**
+   * POST /api/wallet/internal/add
+   *
+   * Endpoint interne réservé aux autres addons UHQ (ex : Orders).
+   * Auth : header X-Panel-Key contenant la clé API du panel (PANEL_API_KEY).
+   * Permet de débiter / créditer un wallet sans token JWT admin.
+   *
+   * Body : { userId, amount, note? }  — même shape que /api/wallet/add
+   */
+  @Post('internal/add')
+  @HttpCode(200)
+  internalAdd(
+    @Headers('x-panel-key') key: string | undefined,
+    @Body() dto: AddFundsDto,
+  ) {
+    const expected = process.env.PANEL_API_KEY;
+    if (!expected) {
+      // Aucune clé configurée → autorisé en dev (même comportement que le backup)
+      this.logger.warn('PANEL_API_KEY non configuré — internal/add non protégé');
+    } else if (key !== expected) {
+      throw new ForbiddenException('Clé API invalide');
+    }
+
+    // Auteur système = 'addon-orders' (pas de sub JWT ici)
+    const wallet = this.walletService.addFunds(
+      dto.userId,
+      dto.amount,
+      dto.note ?? null,
+      'addon-orders',
     );
 
     return { success: true, balance: wallet.balance };
