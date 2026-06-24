@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useAddon } from '../context';
 import { useT, fmt } from '../i18n';
 import { createApi } from '../lib/api';
@@ -25,7 +26,6 @@ export default function AdminBalances() {
   const [sign, setSign]         = useState<1 | -1>(1);
   const [amount, setAmount]     = useState('');
   const [note, setNote]         = useState('');
-  const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
   const [saving, setSaving]     = useState(false);
 
   const load = () => {
@@ -43,24 +43,24 @@ export default function AdminBalances() {
 
   const openForm = (userId: string, s: 1 | -1) => {
     setActiveId(userId); setSign(s);
-    setAmount(''); setNote(''); setFeedback(null);
+    setAmount(''); setNote('');
   };
 
   const submit = async () => {
     const amt = parseFloat(amount);
     if (!activeId || isNaN(amt) || amt <= 0) return;
-    setSaving(true); setFeedback(null);
+    setSaving(true);
     try {
       const res = await api.post<{ balance: number }>('wallet/add', {
         userId: activeId,
         amount: sign * amt,
         note: note || undefined,
       });
-      setFeedback({ type: 'ok', msg: `${t('updated')} — ${fmt(res.balance, 'EUR', lang)}` });
+      toast.success(`${t('updated')} — ${fmt(res.balance, 'EUR', lang)}`);
       setActiveId(null);
       load();
     } catch (e: any) {
-      setFeedback({ type: 'err', msg: e.message });
+      toast.error(e.message);
     } finally {
       setSaving(false);
     }
@@ -74,12 +74,6 @@ export default function AdminBalances() {
   return (
     <div className="page">
       <div className="section-title">{t('allBalances')}</div>
-
-      {feedback && (
-        <div className={`alert alert-${feedback.type === 'ok' ? 'success' : 'error'} mb-3`}>
-          {feedback.msg}
-        </div>
-      )}
 
       {/* Formulaire (s'ouvre sous la ligne concernée) */}
       {activeId && (

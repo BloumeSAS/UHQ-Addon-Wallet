@@ -3,6 +3,7 @@
  * Manifeste : { "zone": "/subusers", "path": "/widget/balances", "height": 340 }
  */
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useAddon } from '../context';
 import { useT, fmt } from '../i18n';
 import { createApi } from '../lib/api';
@@ -21,7 +22,6 @@ export default function BalancesWidget() {
   const [form, setForm] = useState<{ userId: string; sign: 1 | -1 } | null>(null);
   const [amount, setAmount] = useState('');
   const [note,   setNote]   = useState('');
-  const [msg, setMsg]       = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const load = () => {
     api.get<{ wallets: Wallet[] }>('wallet/all')
@@ -41,11 +41,11 @@ export default function BalancesWidget() {
     if (isNaN(amt) || amt <= 0) return;
     try {
       await api.post('wallet/add', { userId: form.userId, amount: form.sign * amt, note: note || undefined });
-      setMsg({ type: 'ok', text: t('updated') });
+      toast.success(t('updated'));
       setForm(null); setAmount(''); setNote('');
       load();
     } catch (e: any) {
-      setMsg({ type: 'err', text: e.message });
+      toast.error(e.message);
     }
   };
 
@@ -57,12 +57,6 @@ export default function BalancesWidget() {
   return (
     <div className="widget" style={{ overflow: 'auto', maxHeight: 340 }}>
       <div className="stat-label mb-3">{t('allBalances')}</div>
-
-      {msg && (
-        <div className={`alert alert-${msg.type === 'ok' ? 'success' : 'error'} mb-2`} style={{ fontSize: '0.75rem' }}>
-          {msg.text}
-        </div>
-      )}
 
       {form && (
         <div className="card card-sm mb-2" style={{ background: 'var(--bg2)' }}>
@@ -105,8 +99,8 @@ export default function BalancesWidget() {
                 </td>
                 <td>
                   <div className="flex gap-1">
-                    <button className="btn btn-sm btn-success" onClick={() => { setForm({ userId: w.user_id, sign: 1  }); setMsg(null); }}>+</button>
-                    <button className="btn btn-sm btn-danger"  onClick={() => { setForm({ userId: w.user_id, sign: -1 }); setMsg(null); }}>−</button>
+                    <button className="btn btn-sm btn-success" onClick={() => setForm({ userId: w.user_id, sign: 1  })}>+</button>
+                    <button className="btn btn-sm btn-danger"  onClick={() => setForm({ userId: w.user_id, sign: -1 })}>−</button>
                   </div>
                 </td>
               </tr>
