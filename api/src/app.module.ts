@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { WalletModule } from './wallet/wallet.module';
 import { ManifestController } from './manifest/manifest.controller';
+import { ThemeController } from './manifest/theme.controller';
 import { BackupController } from './backup/backup.controller';
 
 /** Résout le chemin du build React (web/dist) depuis n'importe où. */
@@ -26,6 +27,6 @@ function resolveWebDist(): string {
     }),
     WalletModule,
   ],
-  controllers: [ManifestController, BackupController],
+  controllers: [ManifestController, ThemeController, BackupController],
 })
 export class AppModule {}

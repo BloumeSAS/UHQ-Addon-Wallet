@@ -75,12 +75,38 @@ export class WalletController {
     return { balance: wallet.balance, currency: wallet.currency };
   }
 
-  /** GET /api/wallet/all — tous les wallets (ADMIN uniquement) */
+  /**
+   * GET /api/wallet/all — tous les wallets (ADMIN uniquement).
+   * Fusionne avec la liste complète des comptes panel (pas seulement ceux
+   * qui ont déjà un wallet — cf. WalletService.getAll) en réutilisant le
+   * JWT admin déjà présent sur CETTE requête pour interroger le panel :
+   * l'admin qui charge "Gestion des soldes" a forcément les droits, pas
+   * besoin d'une clé API séparée pour ça.
+   */
   @Get('all')
-  getAllWallets(@Req() req: Request) {
+  async getAllWallets(@Req() req: Request) {
     const payload = authenticate(req);
     if (payload.role !== 'ADMIN') throw new ForbiddenException('Accès refusé');
-    return { wallets: this.walletService.getAll() };
+
+    const panelUserIds = await this.fetchPanelUserIds(extractToken(req));
+    return { wallets: this.walletService.getAll(panelUserIds) };
+  }
+
+  private async fetchPanelUserIds(adminToken: string): Promise<string[]> {
+    const panelUrl = (process.env.PANEL_URL ?? 'http://localhost:8000').replace(/\/+$/, '');
+    try {
+      const res = await fetch(`${panelUrl}/api/panel/users`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: any = await res.json();
+      return (json?.data ?? []).map((u: any) => u.id).filter(Boolean);
+    } catch (err: any) {
+      this.logger.warn(`Impossible de récupérer la liste des comptes panel : ${err?.message ?? err}`);
+      // Fail-open : au pire on retombe sur le comportement d'avant (wallets déjà créés seulement).
+      return [];
+    }
   }
 
   /** POST /api/wallet/add — créditer / débiter un wallet (ADMIN) */

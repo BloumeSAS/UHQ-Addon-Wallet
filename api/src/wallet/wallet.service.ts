@@ -23,8 +23,26 @@ export class WalletService {
     return this.store.wallets[userId];
   }
 
-  getAll(): WalletRecord[] {
-    return Object.values(this.store.wallets).sort((a, b) => b.balance - a.balance);
+  /**
+   * `panelUserIds` : tous les PanelUser connus côté panel (pas seulement
+   * ceux qui ont déjà un wallet). Un wallet n'est créé qu'à la première
+   * visite de "Mon solde" ou au premier crédit — sans ça, un compte qui n'a
+   * jamais fait ni l'un ni l'autre était invisible dans "Gestion des
+   * soldes". On fusionne : wallet réel s'il existe, sinon une entrée
+   * synthétique à 0€ (jamais persistée — un simple affichage).
+   */
+  getAll(panelUserIds: string[] = []): WalletRecord[] {
+    const now = new Date().toISOString();
+    const merged = new Map<string, WalletRecord>();
+    for (const id of panelUserIds) {
+      merged.set(id, {
+        id: '', user_id: id, balance: 0, currency: 'EUR', created_at: now, updated_at: now,
+      });
+    }
+    for (const wallet of Object.values(this.store.wallets)) {
+      merged.set(wallet.user_id, wallet);
+    }
+    return Array.from(merged.values()).sort((a, b) => b.balance - a.balance);
   }
 
   // ─── Transactions ─────────────────────────────────────────────────────────────
