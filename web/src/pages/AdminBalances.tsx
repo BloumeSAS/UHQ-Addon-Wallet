@@ -86,8 +86,9 @@ export default function AdminBalances() {
           </div>
           <div className="form-row mt-2">
             <div style={{ flex: 1, minWidth: 80 }}>
-              <label className="label-text">{t('amount')}</label>
+              <label className="label-text" htmlFor="wallet-amount">{t('amount')}</label>
               <input
+                id="wallet-amount"
                 className="input"
                 type="number" min="0.01" step="0.01"
                 value={amount}
@@ -97,8 +98,9 @@ export default function AdminBalances() {
               />
             </div>
             <div style={{ flex: 2, minWidth: 120 }}>
-              <label className="label-text">{t('note')}</label>
+              <label className="label-text" htmlFor="wallet-note">{t('note')}</label>
               <input
+                id="wallet-note"
                 className="input"
                 value={note}
                 onChange={e => setNote(e.target.value)}
@@ -141,8 +143,8 @@ export default function AdminBalances() {
                     </td>
                     <td>
                       <div className="flex gap-1">
-                        <button className="btn btn-sm btn-success" onClick={() => openForm(w.user_id, 1)}>+</button>
-                        <button className="btn btn-sm btn-danger"  onClick={() => openForm(w.user_id, -1)}>−</button>
+                        <button className="btn btn-sm btn-success" onClick={() => openForm(w.user_id, 1)} aria-label={`${t('credit')} ${w.user_id}`}>+</button>
+                        <button className="btn btn-sm btn-danger"  onClick={() => openForm(w.user_id, -1)} aria-label={`${t('debit')} ${w.user_id}`}>−</button>
                       </div>
                     </td>
                   </tr>

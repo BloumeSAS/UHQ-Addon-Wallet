@@ -68,6 +68,11 @@ input  { font-family: inherit; }
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.875rem; border-radius: 0.4rem; border: none; font-size: 0.8rem; font-weight: 600; transition: opacity 0.15s; }
 .btn:hover { opacity: 0.85; }
+/* Anneau visible au clavier — cohérent avec .input:focus, jamais retiré sans remplacement. */
+.btn:focus-visible, .input:focus-visible, a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-sm { padding: 0.25rem 0.55rem; font-size: 0.72rem; }
 .btn-primary { background: var(--primary); color: #fff; }
