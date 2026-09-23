@@ -32,7 +32,22 @@ export class ThemeController {
       const res = await fetch(`${panelUrl}/api/panel/setup/status`, { signal: AbortSignal.timeout(4000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: any = await res.json();
-      const themeColors: PanelThemeColors | null = json?.themeColors ?? null;
+      // Le panel stocke `themeColors` comme une chaîne JSON en base (Setting
+      // = clé/valeur texte) — /api/panel/setup/status le renvoie TEL QUEL,
+      // donc une string, pas un objet. Le panel lui-même le sait et fait ce
+      // parsing côté front (web/src/lib/theme.tsx) ; on doit faire pareil
+      // ici, sinon `themeColors.light`/`.dark` valent toujours `undefined`
+      // et le thème custom n'est jamais appliqué (juste silencieusement
+      // ignoré, sans erreur — c'est ce qui rendait le bug invisible).
+      const raw = json?.themeColors;
+      let themeColors: PanelThemeColors | null = null;
+      if (raw) {
+        try {
+          themeColors = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch {
+          themeColors = null;
+        }
+      }
       this.cache = { data: themeColors, fetchedAt: Date.now() };
       return { themeColors };
     } catch (err: any) {
