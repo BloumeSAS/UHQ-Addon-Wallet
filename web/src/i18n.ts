@@ -43,6 +43,10 @@ const I18N: Record<string, Record<string, string>> = {
     historyNote:     'Supprimer une transaction n\'affecte jamais le solde — c\'est un nettoyage de l\'historique affiché.',
     date:            'Date',
     by:              'Par',
+    previous:        'Précédent',
+    next:            'Suivant',
+    page:            'Page',
+    totalAccounts:   '{n} compte(s) au total',
   },
   en: {
     myBalance:       'My balance',
@@ -86,6 +90,10 @@ const I18N: Record<string, Record<string, string>> = {
     historyNote:     'Deleting a transaction never affects the balance — it only cleans up the displayed history.',
     date:            'Date',
     by:              'By',
+    previous:        'Previous',
+    next:            'Next',
+    page:            'Page',
+    totalAccounts:   '{n} account(s) total',
   },
 };
 

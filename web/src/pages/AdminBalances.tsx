@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAddon } from '../context';
 import { useT, fmt } from '../i18n';
@@ -63,6 +63,10 @@ export default function AdminBalances() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
   const [search, setSearch]   = useState('');
+  const PAGE_SIZE = 25;
+  const [page, setPage] = useState(1);
+  const [txPage, setTxPage] = useState(1);
+  const TX_PAGE_SIZE = 25;
 
   // Formulaire credit/débit
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -119,17 +123,18 @@ export default function AdminBalances() {
   const loadHistory = (userId: string) => {
     setTxLoading(true);
     setSelectedTx(new Set());
+    setTxPage(1);
     api.get<{ transactions: Transaction[] }>(`wallet/transactions?userId=${encodeURIComponent(userId)}`)
       .then((d) => setTxs(d.transactions))
       .catch((e) => toast.error(e.message))
       .finally(() => setTxLoading(false));
   };
 
-  const toggleHistory = (userId: string) => {
-    if (historyId === userId) { setHistoryId(null); return; }
+  const openHistory = (userId: string) => {
     setHistoryId(userId);
     loadHistory(userId);
   };
+  const closeHistory = () => { setHistoryId(null); setTxs([]); setSelectedTx(new Set()); };
 
   const toggleSelectTx = (id: string) => {
     setSelectedTx((s) => {
@@ -180,6 +185,16 @@ export default function AdminBalances() {
     if (!q) return true;
     return w.user_id.toLowerCase().includes(q) || (w.email ?? '').toLowerCase().includes(q);
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const txTotalPages = Math.max(1, Math.ceil(txs.length / TX_PAGE_SIZE));
+  const txSafePage = Math.min(txPage, txTotalPages);
+  const txPaged = txs.slice((txSafePage - 1) * TX_PAGE_SIZE, txSafePage * TX_PAGE_SIZE);
+  const historyWallet = wallets.find((w) => w.user_id === historyId);
 
   const activeCount = wallets.filter((w) => w.balance > 0).length;
   const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0);
@@ -289,99 +304,124 @@ export default function AdminBalances() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(w => (
-                  <Fragment key={w.user_id}>
-                    <tr style={{ background: activeId === w.user_id ? 'var(--bg2)' : undefined }}>
-                      <td className="text-sm">{w.email || <span className="text-muted">—</span>}</td>
-                      <td><span className="mono truncate" style={{ maxWidth: 160, display: 'inline-block' }}>{w.user_id}</span></td>
-                      <td>
-                        <span className={`text-bold ${w.balance > 0 ? 'text-green' : 'text-muted'}`}>
-                          {fmt(w.balance, w.currency, lang)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
-                          <button className="btn btn-sm btn-success" onClick={() => openForm(w.user_id, 1)} aria-label={`${t('credit')} ${w.email || w.user_id}`}>+</button>
-                          <button className="btn btn-sm btn-danger"  onClick={() => openForm(w.user_id, -1)} aria-label={`${t('debit')} ${w.email || w.user_id}`}>−</button>
-                          <button className="btn btn-sm btn-outline" onClick={() => toggleHistory(w.user_id)}>
-                            {historyId === w.user_id ? t('hideHistory') : t('viewHistory')}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {historyId === w.user_id && (
-                      <tr>
-                        <td colSpan={4} style={{ background: 'var(--bg2)', padding: '0.75rem' }}>
-                          <div className="flex items-center justify-between mb-2" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-                            <span className="text-bold text-sm">{t('history')}</span>
-                            <div className="flex gap-1">
-                              <button className="btn btn-sm btn-outline" onClick={toggleSelectAll} disabled={txs.length === 0}>
-                                {t('selectAll')}
-                              </button>
-                              <button className="btn btn-sm btn-danger" onClick={deleteSelected} disabled={selectedTx.size === 0}>
-                                {t('deleteSelected')} {selectedTx.size > 0 ? `(${selectedTx.size})` : ''}
-                              </button>
-                              <button className="btn btn-sm btn-danger" onClick={() => clearAllHistory(w.user_id)} disabled={txs.length === 0}>
-                                {t('clearHistory')}
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted mb-2">{t('historyNote')}</p>
-                          {txLoading ? (
-                            <div className="loading">{t('loading')}</div>
-                          ) : txs.length === 0 ? (
-                            <div className="empty">{t('noTx')}</div>
-                          ) : (
-                            <div className="table-wrap">
-                              <table className="table">
-                                <thead>
-                                  <tr>
-                                    <th style={{ width: 24 }}></th>
-                                    <th>{t('amount')}</th>
-                                    <th>{t('note')}</th>
-                                    <th>{t('by')}</th>
-                                    <th>{t('date')}</th>
-                                    <th></th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {txs.map((tx) => (
-                                    <tr key={tx.id}>
-                                      <td>
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedTx.has(tx.id)}
-                                          onChange={() => toggleSelectTx(tx.id)}
-                                          aria-label={`${t('deleteTx')} ${tx.id}`}
-                                        />
-                                      </td>
-                                      <td className={`text-bold ${tx.amount >= 0 ? 'text-green' : 'text-red'}`}>
-                                        {tx.amount >= 0 ? '+' : ''}{fmt(tx.amount, w.currency, lang)}
-                                      </td>
-                                      <td className="text-muted text-sm">{tx.note ?? '—'}</td>
-                                      <td className="mono text-sm">{tx.created_by}</td>
-                                      <td className="mono text-sm">{new Date(tx.created_at).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')}</td>
-                                      <td>
-                                        <button className="btn btn-sm btn-danger" onClick={() => deleteTx(tx.id)} aria-label={t('deleteTx')}>
-                                          {t('deleteTx')}
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                {paged.map(w => (
+                  <tr key={w.user_id} style={{ background: activeId === w.user_id ? 'var(--bg2)' : undefined }}>
+                    <td className="text-sm">{w.email || <span className="text-muted">—</span>}</td>
+                    <td><span className="mono truncate" style={{ maxWidth: 160, display: 'inline-block' }}>{w.user_id}</span></td>
+                    <td>
+                      <span className={`text-bold ${w.balance > 0 ? 'text-green' : 'text-muted'}`}>
+                        {fmt(w.balance, w.currency, lang)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
+                        <button className="btn btn-sm btn-success" onClick={() => openForm(w.user_id, 1)} aria-label={`${t('credit')} ${w.email || w.user_id}`}>+</button>
+                        <button className="btn btn-sm btn-danger"  onClick={() => openForm(w.user_id, -1)} aria-label={`${t('debit')} ${w.email || w.user_id}`}>−</button>
+                        <button className="btn btn-sm btn-outline" onClick={() => openHistory(w.user_id)}>
+                          {t('viewHistory')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <span className="text-xs text-muted">{t('totalAccounts').replace('{n}', String(filtered.length))}</span>
+          <div className="flex items-center gap-2">
+            <button className="btn btn-sm btn-outline" disabled={safePage === 1} onClick={() => setPage((p) => p - 1)}>{t('previous')}</button>
+            <span className="text-xs text-muted">{t('page')} {safePage} / {totalPages}</span>
+            <button className="btn btn-sm btn-outline" disabled={safePage >= totalPages} onClick={() => setPage((p) => p + 1)}>{t('next')}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal historique */}
+      {historyId && (
+        <div className="modal-overlay" onClick={closeHistory}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }} role="dialog" aria-modal="true">
+            <div className="modal-header">
+              <span className="text-bold">{t('history')} — {historyWallet?.email || historyId}</span>
+              <button type="button" className="modal-close" onClick={closeHistory} aria-label={t('cancel')}>✕</button>
+            </div>
+            <div className="flex items-center justify-between mb-2" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+              <p className="text-xs text-muted" style={{ margin: 0 }}>{t('historyNote')}</p>
+              <div className="flex gap-1">
+                <button className="btn btn-sm btn-outline" onClick={toggleSelectAll} disabled={txs.length === 0}>
+                  {t('selectAll')}
+                </button>
+                <button className="btn btn-sm btn-danger" onClick={deleteSelected} disabled={selectedTx.size === 0}>
+                  {t('deleteSelected')} {selectedTx.size > 0 ? `(${selectedTx.size})` : ''}
+                </button>
+                <button className="btn btn-sm btn-danger" onClick={() => historyId && clearAllHistory(historyId)} disabled={txs.length === 0}>
+                  {t('clearHistory')}
+                </button>
+              </div>
+            </div>
+            {txLoading ? (
+              <div className="loading">{t('loading')}</div>
+            ) : txs.length === 0 ? (
+              <div className="empty">{t('noTx')}</div>
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 24 }}></th>
+                        <th>{t('amount')}</th>
+                        <th>{t('note')}</th>
+                        <th>{t('by')}</th>
+                        <th>{t('date')}</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {txPaged.map((tx) => (
+                        <tr key={tx.id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedTx.has(tx.id)}
+                              onChange={() => toggleSelectTx(tx.id)}
+                              aria-label={`${t('deleteTx')} ${tx.id}`}
+                            />
+                          </td>
+                          <td className={`text-bold ${tx.amount >= 0 ? 'text-green' : 'text-red'}`}>
+                            {tx.amount >= 0 ? '+' : ''}{fmt(tx.amount, historyWallet?.currency ?? 'EUR', lang)}
+                          </td>
+                          <td className="text-muted text-sm">{tx.note ?? '—'}</td>
+                          <td className="mono text-sm">{tx.created_by}</td>
+                          <td className="mono text-sm">{new Date(tx.created_at).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')}</td>
+                          <td>
+                            <button className="btn btn-sm btn-danger" onClick={() => deleteTx(tx.id)} aria-label={t('deleteTx')}>
+                              {t('deleteTx')}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {txs.length > TX_PAGE_SIZE && (
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-muted">{t('page')} {txSafePage} / {txTotalPages}</span>
+                    <div className="flex gap-2">
+                      <button className="btn btn-sm btn-outline" disabled={txSafePage === 1} onClick={() => setTxPage((p) => p - 1)}>{t('previous')}</button>
+                      <button className="btn btn-sm btn-outline" disabled={txSafePage >= txTotalPages} onClick={() => setTxPage((p) => p + 1)}>{t('next')}</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {confirmModal}
     </div>
   );
