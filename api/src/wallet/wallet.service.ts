@@ -54,6 +54,25 @@ export class WalletService {
       .slice(0, limit);
   }
 
+  /** Historique d'un utilisateur (résout son wallet). Utilisé par l'admin — limite plus large que getTransactions. */
+  getTransactionsForUser(userId: string, limit = 200): TransactionRecord[] {
+    const wallet = this.store.wallets[userId];
+    if (!wallet) return [];
+    return this.getTransactions(wallet.id, limit);
+  }
+
+  /** Supprime des transactions par id (individuel ou bulk) — historique uniquement, le solde n'est jamais recalculé. */
+  deleteTransactions(ids: string[]): number {
+    return this.store.removeTransactions(ids);
+  }
+
+  /** Vide tout l'historique d'un utilisateur. */
+  clearHistory(userId: string): number {
+    const wallet = this.store.wallets[userId];
+    if (!wallet) return 0;
+    return this.store.clearTransactionsForWallet(wallet.id);
+  }
+
   addFunds(userId: string, amount: number, note: string | null, createdBy: string): WalletRecord {
     const wallet = this.getOrCreate(userId);
     const newBalance = parseFloat((wallet.balance + amount).toFixed(6));

@@ -88,11 +88,13 @@ export class WalletController {
     const payload = authenticate(req);
     if (payload.role !== 'ADMIN') throw new ForbiddenException('Accès refusé');
 
-    const panelUserIds = await this.fetchPanelUserIds(extractToken(req));
-    return { wallets: this.walletService.getAll(panelUserIds) };
+    const panelUsers = await this.fetchPanelUsers(extractToken(req));
+    const emails = Object.fromEntries(panelUsers.map((u) => [u.id, u.email ?? '']));
+    const wallets = this.walletService.getAll(panelUsers.map((u) => u.id));
+    return { wallets: wallets.map((w) => ({ ...w, email: emails[w.user_id] ?? '' })) };
   }
 
-  private async fetchPanelUserIds(adminToken: string): Promise<string[]> {
+  private async fetchPanelUsers(adminToken: string): Promise<{ id: string; email?: string }[]> {
     const panelUrl = (process.env.PANEL_URL ?? 'http://localhost:8000').replace(/\/+$/, '');
     try {
       const res = await fetch(`${panelUrl}/api/panel/users`, {
@@ -101,12 +103,40 @@ export class WalletController {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: any = await res.json();
-      return (json?.data ?? []).map((u: any) => u.id).filter(Boolean);
+      return (json?.data ?? []).filter((u: any) => u?.id);
     } catch (err: any) {
       this.logger.warn(`Impossible de récupérer la liste des comptes panel : ${err?.message ?? err}`);
       // Fail-open : au pire on retombe sur le comportement d'avant (wallets déjà créés seulement).
       return [];
     }
+  }
+
+  /** GET /api/wallet/transactions?userId=X — historique complet d'un utilisateur (ADMIN). */
+  @Get('transactions')
+  getUserTransactions(@Req() req: Request, @Query('userId') userId: string) {
+    const payload = authenticate(req);
+    if (payload.role !== 'ADMIN') throw new ForbiddenException('Accès refusé');
+    return { transactions: this.walletService.getTransactionsForUser(userId) };
+  }
+
+  /** POST /api/wallet/transactions/delete — supprime une ou plusieurs transactions de l'historique (ADMIN). N'affecte jamais le solde. */
+  @Post('transactions/delete')
+  @HttpCode(200)
+  deleteTransactions(@Req() req: Request, @Body() body: { ids: string[] }) {
+    const payload = authenticate(req);
+    if (payload.role !== 'ADMIN') throw new ForbiddenException('Accès refusé');
+    const removed = this.walletService.deleteTransactions(Array.isArray(body.ids) ? body.ids : []);
+    return { success: true, removed };
+  }
+
+  /** POST /api/wallet/transactions/clear — vide tout l'historique d'un utilisateur (ADMIN). N'affecte jamais le solde. */
+  @Post('transactions/clear')
+  @HttpCode(200)
+  clearHistory(@Req() req: Request, @Body() body: { userId: string }) {
+    const payload = authenticate(req);
+    if (payload.role !== 'ADMIN') throw new ForbiddenException('Accès refusé');
+    const removed = this.walletService.clearHistory(body.userId);
+    return { success: true, removed };
   }
 
   /** POST /api/wallet/add — créditer / débiter un wallet (ADMIN) */

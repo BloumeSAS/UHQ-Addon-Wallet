@@ -82,6 +82,25 @@ export class StoreService implements OnModuleInit {
     this.persist();
   }
 
+  /** Supprime des transactions par id (individuel ou bulk) — n'affecte jamais le solde, ne touche que l'historique. Renvoie le nombre supprimé. */
+  removeTransactions(ids: string[]): number {
+    const idSet = new Set(ids);
+    const before = this.data.transactions.length;
+    this.data.transactions = this.data.transactions.filter((tx) => !idSet.has(tx.id));
+    const removed = before - this.data.transactions.length;
+    if (removed > 0) this.persist();
+    return removed;
+  }
+
+  /** Vide tout l'historique d'un wallet (n'affecte jamais le solde). Renvoie le nombre supprimé. */
+  clearTransactionsForWallet(walletId: string): number {
+    const before = this.data.transactions.length;
+    this.data.transactions = this.data.transactions.filter((tx) => tx.wallet_id !== walletId);
+    const removed = before - this.data.transactions.length;
+    if (removed > 0) this.persist();
+    return removed;
+  }
+
   /** Restaure toutes les données depuis un backup. */
   restoreData(snapshot: { wallets: Record<string, WalletRecord>; transactions: TransactionRecord[] }): void {
     this.data.wallets      = snapshot.wallets;

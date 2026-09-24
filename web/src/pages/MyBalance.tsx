@@ -18,6 +18,39 @@ interface Transaction {
   created_at: string;
 }
 
+/**
+ * Ligne d'évolution du solde à partir de l'historique (SVG inline, sans lib).
+ * `txs` est trié du plus récent au plus ancien (comme renvoyé par l'API) —
+ * on reconstruit le solde cumulé en remontant depuis le solde actuel.
+ */
+function BalanceChart({ wallet, txs }: { wallet: Wallet; txs: Transaction[] }) {
+  if (txs.length < 2) return null;
+  const chronological = [...txs].reverse(); // plus ancien → plus récent
+  let running = wallet.balance;
+  const points: number[] = [running];
+  for (let i = chronological.length - 1; i >= 0; i--) {
+    running -= chronological[i].amount;
+    points.unshift(running);
+  }
+  const w = 600, h = 120, pad = 8;
+  const min = Math.min(...points, 0);
+  const max = Math.max(...points, 0.01);
+  const range = max - min || 1;
+  const step = (w - pad * 2) / (points.length - 1);
+  const coords = points.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x},${y}`;
+  });
+  const areaPath = `M${pad},${h - pad} L${coords.join(' L')} L${pad + (points.length - 1) * step},${h - pad} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 120 }} preserveAspectRatio="none">
+      <path d={areaPath} fill="var(--primary)" opacity={0.12} />
+      <polyline points={coords.join(' ')} fill="none" stroke="var(--primary)" strokeWidth={2} />
+    </svg>
+  );
+}
+
 export default function MyBalance() {
   const { token, lang } = useAddon();
   const t = useT();
@@ -56,6 +89,14 @@ export default function MyBalance() {
           {t('currency')} : {wallet.currency}
         </div>
       </div>
+
+      {/* Évolution du solde */}
+      {txs.length >= 2 && (
+        <div className="card mb-4">
+          <div className="stat-label mb-2">{t('balanceOverTime')}</div>
+          <BalanceChart wallet={wallet} txs={txs} />
+        </div>
+      )}
 
       {/* Historique */}
       <div className="section-title">{t('transactions')}</div>
