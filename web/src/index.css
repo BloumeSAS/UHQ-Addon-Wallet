@@ -121,3 +121,22 @@ input  { font-family: inherit; }
 .space-y-3 > * + * { margin-top: 0.75rem; }
 .space-y-4 > * + * { margin-top: 1rem; }
 .w-full { width: 100%; }
+
+/* ─── Modal ───────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 3rem 1rem; overflow-y: auto; z-index: 100;
+}
+.modal-panel {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  width: 100%; max-width: 480px; padding: 1.25rem; max-height: calc(100vh - 6rem); overflow-y: auto;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+}
+.modal-close {
+  background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1.1rem;
+  line-height: 1; padding: 0.25rem;
+}
+.modal-close:hover { color: var(--fg); }

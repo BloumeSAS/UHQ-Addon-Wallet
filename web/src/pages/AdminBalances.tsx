@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useAddon } from '../context';
 import { useT, fmt } from '../i18n';
 import { createApi } from '../lib/api';
+import { useConfirm } from '../useConfirm';
 
 interface Wallet {
   id: string;
@@ -56,6 +57,7 @@ export default function AdminBalances() {
   const { token, role, lang } = useAddon();
   const t = useT();
   const api = useMemo(() => createApi(token), [token]);
+  const [confirmDialog, confirmModal] = useConfirm();
 
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +144,8 @@ export default function AdminBalances() {
   };
 
   const deleteTx = async (id: string) => {
-    if (!window.confirm(t('confirmDeleteTx'))) return;
+    const ok = await confirmDialog({ title: t('deleteTx'), message: t('confirmDeleteTx') });
+    if (!ok) return;
     try {
       await api.post('wallet/transactions/delete', { ids: [id] });
       setTxs((prev) => prev.filter((tx) => tx.id !== id));
@@ -152,7 +155,8 @@ export default function AdminBalances() {
 
   const deleteSelected = async () => {
     if (selectedTx.size === 0) return;
-    if (!window.confirm(t('confirmBulkDelete').replace('{count}', String(selectedTx.size)))) return;
+    const ok = await confirmDialog({ title: t('deleteSelected'), message: t('confirmBulkDelete').replace('{count}', String(selectedTx.size)) });
+    if (!ok) return;
     try {
       const ids = Array.from(selectedTx);
       await api.post('wallet/transactions/delete', { ids });
@@ -162,7 +166,8 @@ export default function AdminBalances() {
   };
 
   const clearAllHistory = async (userId: string) => {
-    if (!window.confirm(t('confirmClearHistory'))) return;
+    const ok = await confirmDialog({ title: t('clearHistory'), message: t('confirmClearHistory') });
+    if (!ok) return;
     try {
       await api.post('wallet/transactions/clear', { userId });
       setTxs([]);
@@ -377,6 +382,7 @@ export default function AdminBalances() {
           </div>
         )}
       </div>
+      {confirmModal}
     </div>
   );
 }
