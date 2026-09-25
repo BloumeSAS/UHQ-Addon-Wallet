@@ -164,7 +164,7 @@ wallet/
 ├── web/              React + Vite
 │   └── src/
 │       ├── pages/    MyBalance · AdminBalances
-│       └── widgets/  DashboardWidget · BalancesWidget
+│       └── widgets/  DashboardWidget
 ├── uhq-manifest.json
 ├── Dockerfile
 ├── docker-compose.yml
