@@ -18,6 +18,8 @@ export interface TransactionRecord {
   note: string | null;
   created_by: string;
   created_at: string;
+  /** Solde du wallet juste APRÈS cette opération (absent des transactions créées avant la v1.3.0). */
+  balance_after?: number;
 }
 
 interface StoreData {
@@ -34,6 +36,7 @@ export class StoreService implements OnModuleInit {
   private readonly logger = new Logger(StoreService.name);
   private readonly dbPath: string;
   private data: StoreData = { wallets: {}, transactions: [] };
+  private readOnly = false;
 
   constructor() {
     // Racine de l'addon = deux niveaux au-dessus de api/
@@ -45,14 +48,27 @@ export class StoreService implements OnModuleInit {
   onModuleInit() {
     try {
       if (fs.existsSync(this.dbPath)) {
-        this.data = JSON.parse(fs.readFileSync(this.dbPath, 'utf8'));
+        const parsed = JSON.parse(fs.readFileSync(this.dbPath, 'utf8'));
+        this.data = {
+          wallets: parsed?.wallets && typeof parsed.wallets === 'object' ? parsed.wallets : {},
+          transactions: Array.isArray(parsed?.transactions) ? parsed.transactions : [],
+        };
         this.logger.log(`Données chargées depuis ${this.dbPath}`);
       } else {
         this.persist();
         this.logger.log(`Nouveau fichier créé : ${this.dbPath}`);
       }
     } catch (err) {
-      this.logger.warn(`Impossible de lire ${this.dbPath} — démarrage avec données vides`);
+      // Fichier illisible : ne JAMAIS repartir à vide puis l'écraser à la prochaine écriture (perte des soldes).
+      // On le met de côté pour une récupération manuelle et on démarre avec une base vide à côté.
+      const aside = `${this.dbPath}.corrupt-${Date.now()}`;
+      try {
+        fs.renameSync(this.dbPath, aside);
+        this.logger.error(`${this.dbPath} illisible — conservé sous ${aside} ; démarrage avec des données vides.`);
+      } catch {
+        this.logger.error(`${this.dbPath} illisible et impossible à mettre de côté — écritures désactivées pour ne rien écraser.`);
+        this.readOnly = true;
+      }
     }
   }
 
@@ -111,6 +127,7 @@ export class StoreService implements OnModuleInit {
   // ─── Persistance ─────────────────────────────────────────────────────────────
 
   private persist(): void {
+    if (this.readOnly) return;
     const tmp = this.dbPath + '.tmp';
     try {
       fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2), 'utf8');

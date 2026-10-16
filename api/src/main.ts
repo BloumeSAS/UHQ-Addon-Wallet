@@ -16,9 +16,17 @@ if (fs.existsSync(envPath)) {
 }
 
 async function bootstrap() {
+  // Pas de CORS : l'interface est servie par CET addon (même origine que son API), y compris embarquée
+  // (/addon-proxy/wallet/) ou en iframe — aucun site tiers n'a de raison d'appeler cette API depuis un navigateur.
   const app = await NestFactory.create(AppModule, {
-    cors: { origin: '*', credentials: false },
+    cors: false,
     logger: ['error', 'warn', 'log'],
+  });
+  (app.getHttpAdapter().getInstance() as any).disable('x-powered-by');
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'no-store');
+    next();
   });
 
   app.useGlobalPipes(

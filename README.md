@@ -173,6 +173,20 @@ wallet/
 
 ---
 
+## Sécurité (v1.3.0)
+
+- **Jetons vérifiés par le panel.** Chaque appel est authentifié via `/api/panel/security/me` (signature et expiration contrôlées par le panel) ; un jeton falsifié (`{"role":"ADMIN"}` non signé) est refusé. Avant la 1.3.0, le contenu du jeton était simplement décodé : n'importe qui pouvait se faire passer pour un administrateur et créditer un wallet. **Mettez à jour.**
+- Jeton lu **uniquement dans l'en-tête `Authorization`** (jamais en query string), aucun CORS, en-têtes `nosniff` / `no-store`.
+- Endpoints internes (`/api/wallet/internal/*`) et sauvegarde : clé `X-Panel-Key` **obligatoire** (refusé si `PANEL_API_KEY` n'est pas configurée), comparaison à temps constant.
+- Crédit/débit admin : le compte doit exister dans le panel, montant non nul à 2 décimales maximum, solde jamais négatif.
+- Fichier de données illisible : conservé sous `*.corrupt-<date>` (jamais écrasé par un fichier vide).
+
+## Nouveautés v1.3.0 (interface)
+
+- **Page client** : solde en grand, cumuls crédité/dépensé, courbe d'évolution interactive (7 j / 30 j / 90 j / tout), historique filtrable (entrées/sorties), recherche, pagination, origine de chaque opération (administrateur, achat boutique, remboursement), solde après opération, export CSV, états vides explicatifs.
+- **Page admin** : indicateurs (total, comptes approvisionnés, solde moyen, comptes à zéro), classement, recherche + filtre + tri + pagination, **fenêtre de crédit/débit** (montants rapides, motifs, aperçu du nouveau solde), historique par compte (filtres, suppression, export), export CSV des comptes.
+- Widget Dashboard : un utilisateur simple y voit son propre solde.
+
 ## Licence
 
 MIT — © 2026 [Bloume SAS](https://bloume.fr)

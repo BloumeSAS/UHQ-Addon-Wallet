@@ -1,15 +1,14 @@
-import {
-  Controller, Get, Post, Body, Headers, ForbiddenException, Logger,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Headers, Logger } from '@nestjs/common';
 import { StoreService } from '../wallet/store.service';
+import { PanelAuthService } from '../auth/panel-auth.service';
 
 /**
  * Backup Controller — intégration avec le système de backup du panel UHQ.
  *
  * Le panel appelle ces endpoints lors de ses sauvegardes/restaurations.
- * Auth : header X-Panel-Key contenant la clé API du panel.
+ * Auth : header X-Panel-Key contenant la clé API du panel (comparaison à temps constant ; REFUSÉ si la clé n'est pas configurée).
  *
- * Déclarer dans uhq-manifest.json :
+ * Déclaré dans uhq-manifest.json :
  *   "backup": {
  *     "exportEndpoint":  "/api/backup/export",
  *     "importEndpoint":  "/api/backup/import",
@@ -20,25 +19,15 @@ import { StoreService } from '../wallet/store.service';
 export class BackupController {
   private readonly logger = new Logger(BackupController.name);
 
-  constructor(private readonly store: StoreService) {}
+  constructor(
+    private readonly store: StoreService,
+    private readonly auth: PanelAuthService,
+  ) {}
 
-  private checkAuth(key: string | undefined) {
-    const expected = process.env.PANEL_API_KEY;
-    if (!expected) {
-      this.logger.warn('PANEL_API_KEY non configuré — backup non protégé');
-      return; // permissif si non configuré (dev)
-    }
-    if (key !== expected) throw new ForbiddenException('Clé API invalide');
-  }
-
-  /**
-   * GET /api/backup/export
-   * Retourne toutes les données du wallet (wallets + transactions).
-   * Appelé par le panel lors d'un backup.
-   */
+  /** GET /api/backup/export — toutes les données du wallet (wallets + transactions). */
   @Get('export')
   export(@Headers('x-panel-key') key: string) {
-    this.checkAuth(key);
+    this.auth.requirePanelKey(key);
     const data = {
       wallets:      Object.values(this.store.wallets),
       transactions: this.store.transactions,
@@ -48,28 +37,26 @@ export class BackupController {
     return data;
   }
 
-  /**
-   * POST /api/backup/import
-   * Restaure les données du wallet depuis un backup.
-   * Appelé par le panel lors d'une restauration.
-   */
+  /** POST /api/backup/import — restaure les données du wallet depuis un backup. */
   @Post('import')
   import(
     @Headers('x-panel-key') key: string,
     @Body() body: { wallets?: any[]; transactions?: any[] },
   ) {
-    this.checkAuth(key);
+    this.auth.requirePanelKey(key);
 
     const wallets: Record<string, any> = {};
-    for (const w of body.wallets ?? []) wallets[w.user_id] = w;
+    for (const w of Array.isArray(body?.wallets) ? body.wallets : []) {
+      if (w && typeof w.user_id === 'string') wallets[w.user_id] = w;
+    }
 
     this.store.restoreData({
       wallets,
-      transactions: body.transactions ?? [],
+      transactions: Array.isArray(body?.transactions) ? body.transactions : [],
     });
 
     this.logger.log(
-      `Backup import: ${Object.keys(wallets).length} wallets, ${(body.transactions ?? []).length} transactions`,
+      `Backup import: ${Object.keys(wallets).length} wallets, ${(Array.isArray(body?.transactions) ? body.transactions : []).length} transactions`,
     );
 
     return { success: true, restored: Object.keys(wallets).length };

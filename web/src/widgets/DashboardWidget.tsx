@@ -1,48 +1,47 @@
 /**
  * Widget compact (100 px) affiché sur le Dashboard du panel.
  * Manifeste : { "zone": "/", "path": "/widget/dashboard", "height": 100 }
+ *  - Admin : total des soldes, comptes actifs, solde moyen.
+ *  - Autre utilisateur : son propre solde.
  */
-import { useEffect, useState } from 'react';
 import { useAddon } from '../context';
-import { useT, fmt } from '../i18n';
-import { createApi } from '../lib/api';
+import { useT } from '../i18n';
+import { useFetch } from '../lib/api';
+import { fmtMoney } from '../lib/format';
 
-interface Wallet { balance: number; currency: string; }
+interface Wallet { balance: number; currency: string }
 
 export default function DashboardWidget() {
-  const { token, lang } = useAddon();
-  const t   = useT();
-  const api = createApi(token);
+  const { token, lang, role } = useAddon();
+  const t = useT();
+  const isAdmin = role === 'ADMIN';
+  const all = useFetch<{ wallets: Wallet[] }>(token && isAdmin ? 'wallet/all' : null);
+  const mine = useFetch<{ balance: number; currency: string }>(token && !isAdmin ? 'wallet/balance' : null);
 
-  const [wallets, setWallets] = useState<Wallet[]>([]);
-
-  useEffect(() => {
-    if (!token) return;
-    api.get<{ wallets: Wallet[] }>('wallet/all')
-      .then(d => setWallets(d.wallets))
-      .catch(() => {/* ignore : l'utilisateur n'est peut-être pas admin */});
-  }, [token]);
-
-  if (!wallets.length) return null;
-
-  const total    = wallets.reduce((s, w) => s + w.balance, 0);
-  const active   = wallets.filter(w => w.balance > 0).length;
-  const avg      = active ? total / active : 0;
-  const currency = wallets[0]?.currency ?? 'EUR';
-
-  const stats = [
-    { label: t('total'),          value: fmt(total,  currency, lang) },
-    { label: t('activeAccounts'), value: String(active) },
-    { label: t('avgBalance'),     value: fmt(avg, currency, lang) },
-  ];
+  let stats: { label: string; value: string; sub: string }[] = [];
+  if (isAdmin) {
+    const wallets = all.data?.wallets ?? [];
+    if (!wallets.length) return null;
+    const total = wallets.reduce((s, w) => s + w.balance, 0);
+    const active = wallets.filter((w) => w.balance > 0).length;
+    const cur = wallets[0]?.currency ?? 'EUR';
+    stats = [
+      { label: t('total'), value: fmtMoney(total, cur, lang), sub: t('acrossAccounts', { n: wallets.length }) },
+      { label: t('activeAccounts'), value: String(active), sub: t('withBalance') },
+      { label: t('avgBalance'), value: fmtMoney(active ? total / active : 0, cur, lang), sub: t('avgBalanceSub') },
+    ];
+  } else {
+    if (!mine.data) return null;
+    stats = [{ label: t('myWallet'), value: fmtMoney(mine.data.balance, mine.data.currency, lang), sub: 'Wallet' }];
+  }
 
   return (
-    <div className="grid-3 widget" style={{ height: '100%', alignItems: 'stretch' }}>
-      {stats.map(s => (
+    <div className="grid widget" style={{ height: '100%', alignItems: 'stretch', gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
+      {stats.map((s) => (
         <div key={s.label} className="card card-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div className="stat-label">{s.label}</div>
-          <div className="stat-value" style={{ fontSize: '1.1rem' }}>{s.value}</div>
-          <div className="stat-sub">Wallet addon</div>
+          <div className="stat-value" style={{ fontSize: '1.15rem' }}>{s.value}</div>
+          <div className="stat-sub">{s.sub}</div>
         </div>
       ))}
     </div>

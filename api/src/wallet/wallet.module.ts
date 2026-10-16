@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { StoreService } from './store.service';
-import { WalletService } from './wallet.service';
 import { WalletController } from './wallet.controller';
+import { WalletService } from './wallet.service';
+import { StoreService } from './store.service';
+import { PanelAuthService } from '../auth/panel-auth.service';
 
 @Module({
-  providers: [StoreService, WalletService],
   controllers: [WalletController],
-  exports: [StoreService],
+  providers: [WalletService, StoreService, PanelAuthService],
+  exports: [StoreService, PanelAuthService],
 })
 export class WalletModule {}

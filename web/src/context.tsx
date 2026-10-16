@@ -3,25 +3,16 @@ import { useSearchParams } from 'react-router-dom';
 
 export interface AddonCtx {
   token: string;
-  lang:  'fr' | 'en';
+  lang: 'fr' | 'en';
   theme: 'dark' | 'light';
-  role:  string;
+  role: string;
 }
 
-const AddonContext = createContext<AddonCtx>({
-  token: '',
-  lang:  'fr',
-  theme: 'dark',
-  role:  'USER',
-});
+const AddonContext = createContext<AddonCtx>({ token: '', lang: 'fr', theme: 'dark', role: 'USER' });
 
 /**
- * Mappe les variables du panel (format brut "H S% L%", cf. tailwind/shadcn —
- * voir web/src/pages/admin/Settings.tsx DEFAULT_THEME côté panel) vers les
- * variables de CE addon (format "hsl(H, S%, L%)", utilisées telles quelles
- * comme couleur dans index.css). Seules les variables ayant un équivalent
- * sémantique ici sont reprises — pas de vert/ambre côté panel (pas de
- * notion de succès/avertissement dans son système de couleurs).
+ * Mappe les variables du panel (format brut "H S% L%") vers les variables de CET addon (format "hsl(H, S%, L%)").
+ * Seules celles qui ont un équivalent sémantique ici sont reprises.
  */
 const PANEL_TO_ADDON_VAR: Record<string, string> = {
   background: 'bg',
@@ -40,16 +31,9 @@ function toHsl(raw: string): string {
   return `hsl(${h}, ${s}, ${l})`;
 }
 
-/**
- * Va chercher le thème custom du panel (couleurs personnalisées depuis
- * Paramètres → Thème) via l'API de CET addon (jamais directement le panel
- * depuis le navigateur — CORS en déploiement externe, cf. theme.controller.ts
- * côté API) et injecte les variables CSS correspondantes. Sans thème custom
- * (palette par défaut du panel) ou en cas d'échec réseau, ne touche à rien —
- * la palette tangerine codée en dur dans index.css reste le repli.
- */
+/** Thème personnalisé du panel (Paramètres → Thème), relayé par l'API de CET addon (évite CORS) ; repli silencieux sur la palette par défaut. */
 function applyPanelTheme(mode: 'light' | 'dark') {
-  fetch('/api/theme')
+  fetch(`${import.meta.env.BASE_URL}api/theme`)
     .then((r) => (r.ok ? r.json() : null))
     .then((data: { themeColors: { light: Record<string, string>; dark: Record<string, string> } | null } | null) => {
       const colors = data?.themeColors?.[mode];
@@ -61,32 +45,41 @@ function applyPanelTheme(mode: 'light' | 'dark') {
       }
     })
     .catch(() => {
-      // Silencieux — repli sur la palette par défaut, pas d'erreur visible
-      // pour un simple habillage cosmétique.
+      /* cosmétique */
     });
+}
+
+/** Rôle lu dans le JWT — affichage uniquement : le serveur (qui fait vérifier le jeton par le panel) applique les droits. */
+function roleFromToken(token: string): string {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return String(payload?.role ?? 'USER');
+  } catch {
+    return 'USER';
+  }
 }
 
 export function AddonProvider({ children }: { children: ReactNode }) {
   const [params] = useSearchParams();
+  const token = params.get('token') ?? '';
 
   const ctx: AddonCtx = {
-    token: params.get('token') ?? '',
-    lang:  (params.get('lang')  ?? 'fr') as 'fr' | 'en',
-    theme: (params.get('theme') ?? 'dark') as 'dark' | 'light',
-    role:  params.get('role')  ?? 'USER',
+    token,
+    lang: (params.get('lang') ?? 'fr') === 'en' ? 'en' : 'fr',
+    theme: (params.get('theme') ?? 'dark') === 'light' ? 'light' : 'dark',
+    role: params.get('role') ?? roleFromToken(token),
   };
 
-  // Applique le thème sur <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', ctx.theme);
     applyPanelTheme(ctx.theme);
   }, [ctx.theme]);
 
-  return (
-    <AddonContext.Provider value={ctx}>
-      {children}
-    </AddonContext.Provider>
-  );
+  useEffect(() => {
+    document.documentElement.lang = ctx.lang;
+  }, [ctx.lang]);
+
+  return <AddonContext.Provider value={ctx}>{children}</AddonContext.Provider>;
 }
 
 export const useAddon = () => useContext(AddonContext);
