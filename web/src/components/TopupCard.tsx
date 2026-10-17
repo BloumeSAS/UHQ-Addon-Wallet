@@ -115,7 +115,7 @@ export function TopupCard({ onChanged }: { onChanged: () => void }) {
 
   return (
     <>
-      <Card title={<span className="row gap-2"><Icon name="plus" size={16} />{t('topupTitle')}</span>}>
+      <Card collapsible defaultOpen={/[?&]topup=/.test(window.location.search)} title={<span className="row gap-2"><Icon name="plus" size={16} />{t('topupTitle')}</span>}>
         {!c.available ? (
           <Notice tone="info">{t(`topupOff.${c.reason ?? 'disabled'}`)}</Notice>
         ) : (
@@ -228,7 +228,7 @@ function GiftCard({ cur, onDone }: { cur: string; onDone: () => void }) {
   };
 
   return (
-    <Card title={<span className="row gap-2"><Icon name="gift" size={16} />{t('giftTitle')}</span>}>
+    <Card collapsible title={<span className="row gap-2"><Icon name="gift" size={16} />{t('giftTitle')}</span>}>
       <form className="stack-sm" onSubmit={apply}>
         <p className="text-sm text-muted">{t('giftHelp')}</p>
         <div className="row" style={{ flexWrap: 'nowrap' }}>

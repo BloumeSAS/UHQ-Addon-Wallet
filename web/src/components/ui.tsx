@@ -3,16 +3,27 @@ import { useT } from '../i18n';
 import { copyText } from '../lib/format';
 import { Icon, IconName } from './icons';
 
-export function Card({ title, right, children, className = '', flush = false }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string; flush?: boolean }) {
+export function Card({ title, right, children, className = '', flush = false, collapsible = false, defaultOpen = false }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string; flush?: boolean; collapsible?: boolean; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(!collapsible || defaultOpen);
   return (
-    <section className={`card ${flush ? 'card-flush' : ''} ${className}`}>
+    <section className={`card ${flush ? 'card-flush' : ''} ${collapsible ? 'card-collapsible' : ''} ${className}`}>
       {(title || right) && (
-        <header className="card-head">
-          <h3 className="card-title">{title}</h3>
-          {right && <div className="row">{right}</div>}
-        </header>
+        collapsible ? (
+          <header className="card-head card-head-toggle" style={{ marginBottom: open ? undefined : 0 }}>
+            <button type="button" className="card-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+              <h3 className="card-title">{title}</h3>
+              <span className="card-chev" style={{ transform: open ? 'rotate(180deg)' : undefined }}><Icon name="chevronDown" size={16} /></span>
+            </button>
+            {right && open && <div className="row">{right}</div>}
+          </header>
+        ) : (
+          <header className="card-head">
+            <h3 className="card-title">{title}</h3>
+            {right && <div className="row">{right}</div>}
+          </header>
+        )
       )}
-      {children}
+      {open && children}
     </section>
   );
 }

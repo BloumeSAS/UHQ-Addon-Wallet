@@ -60,7 +60,7 @@ export default function AdminTopup() {
         </label>
       </Card>
 
-      <Card title={t('offersTitle')} right={<button className="btn btn-outline btn-sm" onClick={() => set('offers', [...s.offers, { id: '', amount: 20, bonus_percent: 0, label: '', featured: false, enabled: true }])} disabled={s.offers.length >= 12}><Icon name="plus" size={14} />{t('addOffer')}</button>}>
+      <Card collapsible title={t('offersTitle')} right={<button className="btn btn-outline btn-sm" onClick={() => set('offers', [...s.offers, { id: '', amount: 20, bonus_percent: 0, label: '', featured: false, enabled: true }])} disabled={s.offers.length >= 12}><Icon name="plus" size={14} />{t('addOffer')}</button>}>
         <p className="text-sm text-muted" style={{ marginBottom: '0.7rem' }}>{t('offersHelp')}</p>
         {s.offers.length === 0 ? <span className="text-sm text-muted">{t('noOffers')}</span> : (
           <div className="table-wrap">

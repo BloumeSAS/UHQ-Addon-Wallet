@@ -62,6 +62,9 @@ a { color: var(--primary); }
 .card-flat { box-shadow: none; }
 .card-sm { padding: 0.85rem 0.95rem; border-radius: calc(var(--radius) * 0.8); }
 .card-flush { padding: 0; overflow: hidden; }
+.card-toggle { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 0.75rem; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.card-toggle:hover .card-chev { color: var(--primary, currentColor); }
+.card-chev { display: inline-flex; color: var(--muted, #888); transition: transform 0.2s; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
 .card-title { font-size: 0.92rem; font-weight: 700; }
 .card-flush > .card-head { padding: 0.95rem 1.1rem 0; }
