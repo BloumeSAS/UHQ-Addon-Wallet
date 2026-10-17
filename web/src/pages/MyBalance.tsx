@@ -8,6 +8,7 @@ import { BalanceChart, SeriesPoint } from '../components/BalanceChart';
 import { Icon } from '../components/icons';
 import { SourceBadge, Tx, txTitle } from '../components/TxMeta';
 import { Card, Empty, ErrorBox, PageSkeleton, Pagination, Seg, SearchInput, Skeleton } from '../components/ui';
+import { TopupCard } from '../components/TopupCard';
 
 interface WalletData {
   wallet: { id: string; balance: number; currency: string; updated_at: string };
@@ -95,6 +96,8 @@ export default function MyBalance() {
           <span className="hero-chip">{t('operations', { n: stats.count })}</span>
         </div>
       </div>
+
+      <TopupCard onChanged={reload} />
 
       {brandNew ? (
         <Card>

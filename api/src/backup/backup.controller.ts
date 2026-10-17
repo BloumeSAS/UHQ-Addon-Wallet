@@ -31,6 +31,7 @@ export class BackupController {
     const data = {
       wallets:      Object.values(this.store.wallets),
       transactions: this.store.transactions,
+      topup:        this.store.topup,
       exportedAt:   new Date().toISOString(),
     };
     this.logger.log(`Backup export: ${data.wallets.length} wallets, ${data.transactions.length} transactions`);
@@ -41,7 +42,7 @@ export class BackupController {
   @Post('import')
   import(
     @Headers('x-panel-key') key: string,
-    @Body() body: { wallets?: any[]; transactions?: any[] },
+    @Body() body: { wallets?: any[]; transactions?: any[]; topup?: any },
   ) {
     this.auth.requirePanelKey(key);
 
@@ -53,6 +54,7 @@ export class BackupController {
     this.store.restoreData({
       wallets,
       transactions: Array.isArray(body?.transactions) ? body.transactions : [],
+      topup: body?.topup && typeof body.topup === 'object' ? body.topup : undefined,
     });
 
     this.logger.log(

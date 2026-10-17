@@ -266,3 +266,11 @@ textarea.input { resize: vertical; min-height: 4.5rem; }
   .tx-row { padding: 0.65rem 0.8rem; }
   .hbar { grid-template-columns: minmax(4rem, 30%) 1fr auto; }
 }
+
+/* Recharge du solde */
+.topup-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.6rem; }
+.topup-offer { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; padding: 0.85rem 0.6rem; border: 1px solid var(--border); border-radius: 0.8rem; background: var(--bg); color: var(--fg); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; min-height: 92px; justify-content: center; font: inherit; }
+.topup-offer:hover { border-color: var(--primary); transform: translateY(-1px); }
+.topup-offer.active { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); background: color-mix(in srgb, var(--primary) 8%, var(--bg)); }
+.topup-amount { font-size: 1.25rem; }
+.steps { padding-left: 1.2rem; display: grid; gap: 0.25rem; font-size: 0.85rem; color: var(--fg2); }

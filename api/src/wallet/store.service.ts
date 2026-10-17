@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DEFAULT_TOPUP, TopupSettings } from './topup.types';
 
 export interface WalletRecord {
   id: string;
@@ -25,6 +26,7 @@ export interface TransactionRecord {
 interface StoreData {
   wallets: Record<string, WalletRecord>;
   transactions: TransactionRecord[];
+  topup: TopupSettings;
 }
 
 /**
@@ -35,7 +37,7 @@ interface StoreData {
 export class StoreService implements OnModuleInit {
   private readonly logger = new Logger(StoreService.name);
   private readonly dbPath: string;
-  private data: StoreData = { wallets: {}, transactions: [] };
+  private data: StoreData = { wallets: {}, transactions: [], topup: JSON.parse(JSON.stringify(DEFAULT_TOPUP)) };
   private readOnly = false;
 
   constructor() {
@@ -52,6 +54,7 @@ export class StoreService implements OnModuleInit {
         this.data = {
           wallets: parsed?.wallets && typeof parsed.wallets === 'object' ? parsed.wallets : {},
           transactions: Array.isArray(parsed?.transactions) ? parsed.transactions : [],
+          topup: { ...JSON.parse(JSON.stringify(DEFAULT_TOPUP)), ...(parsed?.topup && typeof parsed.topup === 'object' ? parsed.topup : {}) },
         };
         this.logger.log(`Données chargées depuis ${this.dbPath}`);
       } else {
@@ -80,6 +83,15 @@ export class StoreService implements OnModuleInit {
 
   get transactions(): TransactionRecord[] {
     return this.data.transactions;
+  }
+
+  get topup(): TopupSettings {
+    return this.data.topup;
+  }
+
+  setTopup(t: TopupSettings): void {
+    this.data.topup = t;
+    this.persist();
   }
 
   // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -118,9 +130,10 @@ export class StoreService implements OnModuleInit {
   }
 
   /** Restaure toutes les données depuis un backup. */
-  restoreData(snapshot: { wallets: Record<string, WalletRecord>; transactions: TransactionRecord[] }): void {
+  restoreData(snapshot: { wallets: Record<string, WalletRecord>; transactions: TransactionRecord[]; topup?: TopupSettings }): void {
     this.data.wallets      = snapshot.wallets;
     this.data.transactions = snapshot.transactions;
+    if (snapshot.topup) this.data.topup = { ...JSON.parse(JSON.stringify(DEFAULT_TOPUP)), ...snapshot.topup };
     this.persist();
   }
 

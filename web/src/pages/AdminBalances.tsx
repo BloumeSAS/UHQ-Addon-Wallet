@@ -6,7 +6,8 @@ import { useApi, useDebounced, useFetch } from '../lib/api';
 import { downloadFile, fmtDateTime, fmtMoney, initials, timeAgo, toCsv } from '../lib/format';
 import { Icon } from '../components/icons';
 import { SourceBadge, Tx, txTitle } from '../components/TxMeta';
-import { Card, Empty, ErrorBox, Field, Modal, PageSkeleton, Pagination, SearchInput, Seg, Stat, useConfirm } from '../components/ui';
+import { Card, Empty, ErrorBox, Field, Modal, PageSkeleton, Pagination, SearchInput, Seg, Stat, Tabs, useConfirm } from '../components/ui';
+import AdminTopup from './AdminTopup';
 
 interface Wallet {
   id: string;
@@ -36,6 +37,7 @@ export default function AdminBalances() {
   const [offset, setOffset] = useState(0);
   const [adjust, setAdjust] = useState<{ wallet: Wallet; sign: 1 | -1 } | null>(null);
   const [history, setHistory] = useState<Wallet | null>(null);
+  const [tab, setTab] = useState<'accounts' | 'topup'>('accounts');
 
   const wallets = all.data?.wallets ?? [];
   const cur = wallets[0]?.currency ?? 'EUR';
@@ -85,6 +87,12 @@ export default function AdminBalances() {
         </div>
       </div>
 
+      <Tabs<'accounts' | 'topup'>
+        value={tab}
+        onChange={setTab}
+        tabs={[{ id: 'accounts', label: t('tab.accounts'), icon: 'users' }, { id: 'topup', label: t('tab.topup'), icon: 'card' }]}
+      />
+      {tab === 'topup' ? <AdminTopup /> : <>
       <div className="stat-grid">
         <Stat label={t('total')} value={fmtMoney(total, cur, lang)} sub={t('acrossAccounts', { n: wallets.length })} tone="primary" />
         <Stat label={t('activeAccounts')} value={`${funded.length} / ${wallets.length}`} sub={t('withBalance')} />
@@ -169,6 +177,7 @@ export default function AdminBalances() {
         )}
         <Pagination total={filtered.length} limit={PAGE} offset={offset} onChange={setOffset} />
       </Card>
+      </>}
 
       {adjust && <AdjustModal wallet={adjust.wallet} initialSign={adjust.sign} onClose={() => setAdjust(null)} onDone={() => { setAdjust(null); all.reload(); }} />}
       {history && <HistoryModal wallet={history} onClose={() => setHistory(null)} onChanged={all.reload} />}
